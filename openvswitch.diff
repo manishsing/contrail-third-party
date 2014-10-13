@@ -44,10 +44,10 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
  void
  ovsdb_idl_run(struct ovsdb_idl *idl)
  {
-@@ -307,6 +320,23 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
-             }
+@@ -313,6 +326,24 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
              break;
          }
+ 
 +#else
 +void
 +ovsdb_idl_set_callback(struct ovsdb_idl *idl, void *idl_base, idl_callback i_cb)
@@ -65,10 +65,11 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
 +ovsdb_idl_msg_process(struct ovsdb_idl *idl, struct jsonrpc_msg *msg)
 +{
 +#endif
- 
-         msg = jsonrpc_session_recv(idl->session);
-         if (!msg) {
-@@ -355,7 +385,9 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
++
+         if (msg->type == JSONRPC_NOTIFY
+             && !strcmp(msg->method, "update")
+             && msg->params->type == JSON_ARRAY
+@@ -355,7 +386,9 @@ ovsdb_idl_run(struct ovsdb_idl *idl)
                       jsonrpc_msg_type_to_string(msg->type));
          }
          jsonrpc_msg_destroy(msg);
@@ -78,7 +79,7 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
  }
  
  /* Arranges for poll_block() to wake up when ovsdb_idl_run() has something to
-@@ -550,8 +582,18 @@ ovsdb_idl_omit(struct ovsdb_idl *idl, co
+@@ -550,8 +583,18 @@ ovsdb_idl_omit(struct ovsdb_idl *idl, co
      *ovsdb_idl_get_mode(idl, column) = 0;
  }
  
@@ -97,7 +98,7 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
  {
      struct json *monitor_requests;
      struct jsonrpc_msg *msg;
-@@ -588,7 +630,11 @@ ovsdb_idl_send_monitor_request(struct ov
+@@ -588,7 +631,11 @@ ovsdb_idl_send_monitor_request(struct ov
          json_array_create_3(json_string_create(idl->class->database),
                              json_null_create(), monitor_requests),
          &idl->monitor_request_id);
@@ -109,7 +110,7 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
  }
  
  static void
-@@ -988,11 +1034,19 @@ ovsdb_idl_insert_row(struct ovsdb_idl_ro
+@@ -988,11 +1035,19 @@ ovsdb_idl_insert_row(struct ovsdb_idl_ro
      ovsdb_idl_row_parse(row);
  
      ovsdb_idl_row_reparse_backrefs(row);
@@ -129,7 +130,7 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
      ovsdb_idl_row_unparse(row);
      ovsdb_idl_row_clear_arcs(row, true);
      ovsdb_idl_row_clear_old(row);
-@@ -1015,6 +1069,10 @@ ovsdb_idl_modify_row(struct ovsdb_idl_ro
+@@ -1015,6 +1070,10 @@ ovsdb_idl_modify_row(struct ovsdb_idl_ro
      changed = ovsdb_idl_row_update(row, row_json);
      ovsdb_idl_row_parse(row);
  
@@ -140,13 +141,14 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
      return changed;
  }
  
-@@ -1526,9 +1584,20 @@ ovsdb_idl_txn_disassemble(struct ovsdb_i
+@@ -1526,9 +1585,22 @@ ovsdb_idl_txn_disassemble(struct ovsdb_i
   * IDL's copy of the database.  If the transaction commits successfully, then
   * the database server will send an update and, thus, the IDL will be updated
   * with the committed changes. */
 +#ifndef OPEN_CONTRAIL_CLIENT
 +enum ovsdb_idl_txn_status
 +ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
++{
 +#else
  enum ovsdb_idl_txn_status
  ovsdb_idl_txn_commit(struct ovsdb_idl_txn *txn)
@@ -156,12 +158,13 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
 +
 +struct jsonrpc_msg *
 +ovsdb_idl_txn_encode(struct ovsdb_idl_txn *txn)
-+#endif
 +{
++    struct jsonrpc_msg *msg;
++#endif
      struct ovsdb_idl_row *row;
      struct json *operations;
      bool any_updates;
-@@ -1713,6 +1782,7 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_tx
+@@ -1713,6 +1785,7 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_tx
      if (!any_updates) {
          txn->status = TXN_UNCHANGED;
          json_destroy(operations);
@@ -169,7 +172,7 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
      } else if (!jsonrpc_session_send(
                     txn->idl->session,
                     jsonrpc_create_request(
-@@ -1722,6 +1792,15 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_tx
+@@ -1722,6 +1795,14 @@ ovsdb_idl_txn_commit(struct ovsdb_idl_tx
          txn->status = TXN_INCOMPLETE;
      } else {
          txn->status = TXN_TRY_AGAIN;
@@ -180,19 +183,18 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
 +        hmap_insert(&txn->idl->outstanding_txns, &txn->hmap_node,
 +                    json_hash(txn->request_id, 0));
 +        txn->status = TXN_INCOMPLETE;
-+    }
 +#endif
      }
  
  disassemble_out:
-@@ -1738,7 +1817,11 @@ coverage_out:
+@@ -1738,7 +1819,11 @@ coverage_out:
      case TXN_ERROR:         COVERAGE_INC(txn_error);          break;
      }
  
 +#ifndef OPEN_CONTRAIL_CLIENT
      return txn->status;
 +#else
-+    return msg
++    return msg;
 +#endif
  }
  
@@ -200,15 +202,16 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
 diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.h b/openvswitch-2.3.0/lib/ovsdb-idl.h
 --- a/openvswitch-2.3.0/lib/ovsdb-idl.h
 +++ b/openvswitch-2.3.0/lib/ovsdb-idl.h
-@@ -42,6 +42,8 @@ struct ovsdb_idl_column;
+@@ -41,6 +41,9 @@ struct ovsdb_idl_class;
+ struct ovsdb_idl_column;
  struct ovsdb_idl_table_class;
  struct uuid;
- 
-+typedef void (*idl_callback)(void *, int, struct ovsdb_idl_row *);
++struct ovsdb_idl_row;
 +
++typedef void (*idl_callback)(void *, int, struct ovsdb_idl_row *);
+ 
  struct ovsdb_idl *ovsdb_idl_create(const char *remote,
                                     const struct ovsdb_idl_class *,
-                                    bool monitor_everything_by_default,
 diff -git a/openvswitch-2.3.0/lib/vtep-idl.c b/openvswitch-2.3.0/lib/vtep-idl.c
 --- a/openvswitch-2.3.0/lib/vtep-idl.c
 +++ b/openvswitch-2.3.0/lib/vtep-idl.c
@@ -472,4 +475,13 @@ diff -git a/openvswitch-2.3.0/lib/vtep-idl.h b/openvswitch-2.3.0/lib/vtep-idl.h
 +    VTEPREC_TABLE_TUNNEL,
      VTEPREC_N_TABLES
  };
+ 
+@@ -1106,7 +1119,7 @@ enum {
+ #define vteprec_table_physical_port (vteprec_table_classes[VTEPREC_TABLE_PHYSICAL_PORT])
+ #define vteprec_table_logical_binding_stats (vteprec_table_classes[VTEPREC_TABLE_LOGICAL_BINDING_STATS])
+ 
+-extern struct ovsdb_idl_table_class vteprec_table_classes[VTEPREC_N_TABLES];
++extern struct ovsdb_idl_table_class vteprec_table_classes[VTEPREC_N_TABLES_OPEN_CONTRAIL];
+ 
+ extern struct ovsdb_idl_class vteprec_idl_class;
  
