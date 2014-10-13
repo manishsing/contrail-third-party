@@ -102,7 +102,7 @@ diff -git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl.
          json_array_create_3(json_string_create(idl->class->database),
                              json_null_create(), monitor_requests),
          &idl->monitor_request_id);
-+#ifdef OPEN_CONTRAIL_CLIENT
++#ifndef OPEN_CONTRAIL_CLIENT
      jsonrpc_session_send(idl->session, msg);
 +#else
 +    return msg;
