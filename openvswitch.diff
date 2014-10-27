@@ -120,25 +120,26 @@ diff --git a/openvswitch-2.3.0/lib/ovsdb-idl.c b/openvswitch-2.3.0/lib/ovsdb-idl
  }
  
  static void
-@@ -936,6 +992,10 @@ ovsdb_idl_row_reparse_backrefs(struct ov
-     LIST_FOR_EACH_SAFE (arc, next, dst_node, &row->dst_arcs) {
-         struct ovsdb_idl_row *ref = arc->src;
- 
+@@ -939,6 +995,10 @@ ovsdb_idl_row_reparse_backrefs(struct ov
+         ovsdb_idl_row_unparse(ref);
+         ovsdb_idl_row_clear_arcs(ref, false);
+         ovsdb_idl_row_parse(ref);
 +#ifdef OPEN_CONTRAIL_CLIENT
 +        if (row->table->idl->cb)
 +            row->table->idl->cb(ref->table->idl->open_contrail_client, 1, ref);
 +#endif
-         ovsdb_idl_row_unparse(ref);
-         ovsdb_idl_row_clear_arcs(ref, false);
-         ovsdb_idl_row_parse(ref);
-@@ -988,11 +1048,19 @@ ovsdb_idl_insert_row(struct ovsdb_idl_ro
+     }
+ }
+ 
+@@ -987,12 +1047,20 @@ ovsdb_idl_insert_row(struct ovsdb_idl_ro
+     ovsdb_idl_row_update(row, row_json);
      ovsdb_idl_row_parse(row);
  
-     ovsdb_idl_row_reparse_backrefs(row);
 +#ifdef OPEN_CONTRAIL_CLIENT
 +    if (row->table->idl->cb)
 +        row->table->idl->cb(row->table->idl->open_contrail_client, 1, row);
 +#endif
+     ovsdb_idl_row_reparse_backrefs(row);
  }
  
  static void
@@ -396,46 +397,33 @@ diff --git a/openvswitch-2.3.0/lib/vtep-idl.c b/openvswitch-2.3.0/lib/vtep-idl.c
  }
  
  /* Tunnel table. */
-@@ -5890,12 +5920,6 @@ vteprec_ucast_macs_remote_columns_init(v
+@@ -5890,12 +5920,14 @@ vteprec_ucast_macs_remote_columns_init(v
  }
  
  struct ovsdb_idl_table_class vteprec_table_classes[VTEPREC_N_TABLES] = {
--    {"Arp_Sources_Local", true,
--     vteprec_arp_sources_local_columns, ARRAY_SIZE(vteprec_arp_sources_local_columns),
--     sizeof(struct vteprec_arp_sources_local), vteprec_arp_sources_local_init__},
--    {"Arp_Sources_Remote", true,
--     vteprec_arp_sources_remote_columns, ARRAY_SIZE(vteprec_arp_sources_remote_columns),
--     sizeof(struct vteprec_arp_sources_remote), vteprec_arp_sources_remote_init__},
++#ifndef OPEN_CONTRAIL_CLIENT
+     {"Arp_Sources_Local", true,
+      vteprec_arp_sources_local_columns, ARRAY_SIZE(vteprec_arp_sources_local_columns),
+      sizeof(struct vteprec_arp_sources_local), vteprec_arp_sources_local_init__},
+     {"Arp_Sources_Remote", true,
+      vteprec_arp_sources_remote_columns, ARRAY_SIZE(vteprec_arp_sources_remote_columns),
+      sizeof(struct vteprec_arp_sources_remote), vteprec_arp_sources_remote_init__},
++#endif
      {"Global", true,
       vteprec_global_columns, ARRAY_SIZE(vteprec_global_columns),
       sizeof(struct vteprec_global), vteprec_global_init__},
-@@ -5929,15 +5953,23 @@ struct ovsdb_idl_table_class vteprec_tab
+@@ -5929,9 +5961,11 @@ struct ovsdb_idl_table_class vteprec_tab
      {"Physical_Switch", false,
       vteprec_physical_switch_columns, ARRAY_SIZE(vteprec_physical_switch_columns),
       sizeof(struct vteprec_physical_switch), vteprec_physical_switch_init__},
--    {"Tunnel", false,
--     vteprec_tunnel_columns, ARRAY_SIZE(vteprec_tunnel_columns),
--     sizeof(struct vteprec_tunnel), vteprec_tunnel_init__},
++#ifndef OPEN_CONTRAIL_CLIENT
+     {"Tunnel", false,
+      vteprec_tunnel_columns, ARRAY_SIZE(vteprec_tunnel_columns),
+      sizeof(struct vteprec_tunnel), vteprec_tunnel_init__},
++#endif
      {"Ucast_Macs_Local", true,
       vteprec_ucast_macs_local_columns, ARRAY_SIZE(vteprec_ucast_macs_local_columns),
       sizeof(struct vteprec_ucast_macs_local), vteprec_ucast_macs_local_init__},
-     {"Ucast_Macs_Remote", true,
-      vteprec_ucast_macs_remote_columns, ARRAY_SIZE(vteprec_ucast_macs_remote_columns),
-      sizeof(struct vteprec_ucast_macs_remote), vteprec_ucast_macs_remote_init__},
-+#ifndef OPEN_CONTRAIL_CLIENT
-+    {"Arp_Sources_Local", true,
-+     vteprec_arp_sources_local_columns, ARRAY_SIZE(vteprec_arp_sources_local_columns),
-+     sizeof(struct vteprec_arp_sources_local), vteprec_arp_sources_local_init__},
-+    {"Arp_Sources_Remote", true,
-+     vteprec_arp_sources_remote_columns, ARRAY_SIZE(vteprec_arp_sources_remote_columns),
-+     sizeof(struct vteprec_arp_sources_remote), vteprec_arp_sources_remote_init__},
-+    {"Tunnel", false,
-+     vteprec_tunnel_columns, ARRAY_SIZE(vteprec_tunnel_columns),
-+     sizeof(struct vteprec_tunnel), vteprec_tunnel_init__},
-+#endif
- };
- 
- struct ovsdb_idl_class vteprec_idl_class = {
 diff --git a/openvswitch-2.3.0/lib/vtep-idl.h b/openvswitch-2.3.0/lib/vtep-idl.h
 --- a/openvswitch-2.3.0/lib/vtep-idl.h
 +++ b/openvswitch-2.3.0/lib/vtep-idl.h
@@ -485,32 +473,34 @@ diff --git a/openvswitch-2.3.0/lib/vtep-idl.h b/openvswitch-2.3.0/lib/vtep-idl.h
  #define vteprec_physical_switch_col_name (vteprec_physical_switch_columns[VTEPREC_PHYSICAL_SWITCH_COL_NAME])
  
  extern struct ovsdb_idl_column vteprec_physical_switch_columns[VTEPREC_PHYSICAL_SWITCH_N_COLUMNS];
-@@ -1070,8 +1082,6 @@ void vteprec_ucast_macs_remote_set_logic
+@@ -1070,8 +1082,10 @@ void vteprec_ucast_macs_remote_set_logic
  
  
  enum {
--    VTEPREC_TABLE_ARP_SOURCES_LOCAL,
--    VTEPREC_TABLE_ARP_SOURCES_REMOTE,
++#ifndef OPEN_CONTRAIL_CLIENT
+     VTEPREC_TABLE_ARP_SOURCES_LOCAL,
+     VTEPREC_TABLE_ARP_SOURCES_REMOTE,
++#endif
      VTEPREC_TABLE_GLOBAL,
      VTEPREC_TABLE_LOGICAL_BINDING_STATS,
      VTEPREC_TABLE_LOGICAL_ROUTER,
-@@ -1083,10 +1093,17 @@ enum {
+@@ -1083,10 +1097,19 @@ enum {
      VTEPREC_TABLE_PHYSICAL_LOCATOR_SET,
      VTEPREC_TABLE_PHYSICAL_PORT,
      VTEPREC_TABLE_PHYSICAL_SWITCH,
--    VTEPREC_TABLE_TUNNEL,
++#ifndef OPEN_CONTRAIL_CLIENT
+     VTEPREC_TABLE_TUNNEL,
++#endif
      VTEPREC_TABLE_UCAST_MACS_LOCAL,
      VTEPREC_TABLE_UCAST_MACS_REMOTE,
 +#ifdef OPEN_CONTRAIL_CLIENT
 +    VTEPREC_N_TABLES,
-+#endif
 +    VTEPREC_TABLE_ARP_SOURCES_LOCAL,
 +    VTEPREC_TABLE_ARP_SOURCES_REMOTE,
-+    VTEPREC_TABLE_TUNNEL,
-+#ifndef OPEN_CONTRAIL_CLIENT
++    VTEPREC_TABLE_TUNNEL
++#else
      VTEPREC_N_TABLES
 +#endif
  };
  
  #define vteprec_table_mcast_macs_remote (vteprec_table_classes[VTEPREC_TABLE_MCAST_MACS_REMOTE])
-
